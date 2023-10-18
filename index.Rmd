@@ -8,3 +8,32 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+```{r packages}
+install.packages("DBI")
+install.packages("RMySQL")
+
+library(DBI)
+library(RMySQL)
+```
+
+```{r Connect to AWS RDS Database}
+con <- dbConnect(RMySQL::MySQL(), 
+                 dbname = "linkedin_job_postings_2023", 
+                 host = "database-1-instance-1.cngfftmjinac.us-east-2.rds.amazonaws.com", 
+                 port = 3306, 
+                 user = "admin", 
+                 password = "DDbna}rt2R0h")
+```
+
+```{r fetch}
+query <- "SELECT * FROM job_postings"
+data <- dbGetQuery(con, query)
+
+data
+```
+
+```{r close connectio}
+dbDisconnect(con)
+```
+
