@@ -1,6 +1,6 @@
 ---
 title: "index"
-author: "Haig Bedros"
+author: ""
 date: "2023-10-10"
 output: html_document
 ---
@@ -9,22 +9,31 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+```{r packages}
+install.packages("DBI")
+install.packages("RMySQL")
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+library(DBI)
+library(RMySQL)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r Connect to AWS RDS Database}
+con <- dbConnect(RMySQL::MySQL(), 
+                 dbname = "linkedin_job_postings_2023", 
+                 host = "database-1-instance-1.cngfftmjinac.us-east-2.rds.amazonaws.com", 
+                 port = 3306, 
+                 user = "admin", 
+                 password = "DDbna}rt2R0h")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r fetch}
+query <- "SELECT * FROM job_postings"
+data <- dbGetQuery(con, query)
+
+data
+```
+
+```{r close connectio}
+dbDisconnect(con)
+```
+
