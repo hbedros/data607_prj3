@@ -62,3 +62,21 @@ ds_jobs$skills <- sapply(ds_jobs$description, extract_skills, USE.NAMES = FALSE)
 
 head(ds_jobs)
 
+## Analysis: do the most viewed jobs require diff skills? 
+
+#a lot of missing values so this doesnt work
+ds_jobs <- ds_jobs %>%
+  left_join(companies %>% select(company_id, name), by = "company_id")
+
+q75 <- quantile(ds_jobs$views, 0.75, na.rm = TRUE)
+
+many_views <- ds_jobs %>% 
+  filter(views >= q75)
+
+library(tidytext)
+
+skills_count <- many_views %>%
+  unnest_tokens(word, skills) %>%
+  count(word, sort = TRUE)
+
+head(skills_count, 20)
