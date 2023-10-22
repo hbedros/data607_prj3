@@ -9,13 +9,28 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r packages}
-install.packages("DBI")
-install.packages("RMySQL")
+## Objective
 
+We are attempting to use data in an effort to answer the question: **“Which are the most valued data science skills?”**
+
+Our strategy, generally speaking, is to look at a dataset with thousands of LinkedIn job postings. We can then filter this dataset to include only data science (or data science-adjacent roles). Then, from the description of these jobs, we can extract the skills that the employers are looking for.
+
+To be a bit more specific, we will attempt to answer two questions: 
+
+1. Overall, what are the skills that employers are lookign for in their data scientists?
+2. What are the skills that the most desirable data science jobs require/prefer?
+
+It's worth pointing out, we originally wanted to look at another question, namely how salaries of different jobs might be associated with different skills. However, there was a lot of salary data missing, and this approach was just not feasible. 
+
+## Setting up 
+```{r packages}
 library(DBI)
 library(RMySQL)
+library(dplyr)
+library(stringr)
 ```
+
+We start by establishing a connection to the Amazon RDS database: 
 
 ```{r Connect to AWS RDS Database}
 con <- dbConnect(RMySQL::MySQL(), 
@@ -24,16 +39,116 @@ con <- dbConnect(RMySQL::MySQL(),
                  port = 3306, 
                  user = "admin", 
                  password = "DDbna}rt2R0h")
+dbListTables(con) 
 ```
 
-```{r fetch}
+## Loading, cleaning the tables
+
+
+```{r}
+query <- "SELECT * FROM benefits"
+benefits <- dbGetQuery(con, query)
+
+query <- "SELECT * FROM cleaned"
+cleaned <- dbGetQuery(con, query)
+
+query <- "SELECT * FROM companies"
+companies <- dbGetQuery(con, query)
+
+query <- "SELECT * FROM company_industries"
+company_industries <- dbGetQuery(con, query)
+
+query <- "SELECT * FROM company_specialities"
+company_specialities <- dbGetQuery(con, query)
+
+query <- "SELECT * FROM employee_counts"
+employee_counts <- dbGetQuery(con, query)
+
+query <- "SELECT * FROM job_industries"
+job_industries <- dbGetQuery(con, query)
+
 query <- "SELECT * FROM job_postings"
-data <- dbGetQuery(con, query)
+job_postings <- dbGetQuery(con, query)
 
-data
-```
+query <- "SELECT * FROM job_skills"
+job_skills <- dbGetQuery(con, query)
 
-```{r close connectio}
+#closing connection
 dbDisconnect(con)
 ```
 
+
+The job_postings table is of special interest. However, we are only interested in the postings for data science (or at least data-related) roles. We'll use the grep1 function to include all titles that have the word "data" in them. 
+
+```{r}
+ds_jobs <- job_postings %>%
+  filter(grepl("Data", title, ignore.case = TRUE))
+
+head(ds_jobs)
+```
+
+## Analysis
+
+### Part 1: A look at Views
+
+Earlier we took a look at all data science-related roles. In this section, we take a slightly differennt approach. After all, we are looking for the most desirable data science skills. Perhaps, then, we can look at the most desirable jobs and see which skills are associated with those jobs. There are different ways to rank the desirability of jobs. We opted to think about views--where presumably a job is more desirable if the posting received more 
+
+
+## Analysis: 
+
+#Part 1: 
+#Selina, Zainab, please put your analysis here
+
+
+#Part 2: do the most viewed jobs require diff skills? 
+
+#from ds.only, I'll change later
+#a lot of missing values so this doesnt work
+#ds_jobs <- ds_jobs %>%
+ # left_join(companies %>% select(company_id, name), by = "company_id")
+
+
+library(rvest)
+
+html_content <- read_html('https://raw.githubusercontent.com/hbedros/data607_prj3/gss/enhancv_excerpt.html')
+li_items <- html_content %>%
+  html_nodes("li") %>%
+  html_text() %>% 
+  str_squish()  
+
+li_items = tolower(li_items)
+
+
+#Creating a function to extract the skills from description column 
+extract_skills <- function(description) {
+  description <- tolower(description) #to match li_items case 
+  skills <- unlist(strsplit(description, "\\s+"))  #splitting using \\s, turn to vector, and remove duplicates
+  skills <- skills[skills %in% li_items]  #filtering for skills in skills_list
+  return(paste(unique(skills), collapse = ", "))  #combine matches into one string
+}
+
+# apply, create new column.. .
+ds_jobs$skills <- sapply(ds_jobs$description, extract_skills, USE.NAMES = FALSE)
+
+ds_jobs$skills
+
+ds_jobs_clean <- ds_jobs[c("job_id", "company_id", "title", "views", "skills")] 
+  
+  
+library(tidytext)
+q75 <- quantile(ds_jobs_clean$views, 0.75, na.rm = TRUE)
+
+many_views <- ds_jobs_clean %>% 
+  filter(views >= q75)
+
+skills_count <- many_views %>%
+  unnest_tokens(word, skills) %>%
+  count(word, sort = TRUE)
+
+skills_count
+
+library(wordcloud)
+wordcloud(words = skills_count$word, freq = skills_count$n, min.freq = 1, scale = c(2, .5))
+
+
+### PART 2
