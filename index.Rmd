@@ -110,7 +110,7 @@ Earlier we took a look at all data science-related roles. In this section, we ta
 
 library(rvest)
 
-html_content <- read_html('https://raw.githubusercontent.com/hbedros/data607_prj3/gss/enhancv_excerpt.html')
+html_content <- read_html('https://raw.githubusercontent.com/hbedros/data607_prj3/main/data/enhancv_excerpt.html')
 li_items <- html_content %>%
   html_nodes("li") %>%
   html_text() %>% 
