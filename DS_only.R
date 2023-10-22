@@ -1,6 +1,7 @@
 library(DBI)
 library(RMySQL)
 library(dplyr)
+library(stringr)
 
 con <- dbConnect(RMySQL::MySQL(), 
                  dbname = "linkedin_job_postings_2023", 
@@ -46,37 +47,52 @@ ds_jobs <- job_postings %>%
 
 head(ds_jobs)
 
-#now I'll extract skills from this very large list of skills: 
-skills_list <- readLines("https://raw.githubusercontent.com/hbedros/data607_prj3/gss/linkedin%20skill")
-skills_list <- tolower(skills_list)
-
-#function; extracting skills from description
-extract_skills <- function(description) {
-  description <- tolower(description)  # because the list is in lower
-  skills <- unique(unlist(strsplit(description, "\\s+"))) #splitting using \\s, turn to vector, and remove duplicates 
-  skills <- skills[skills %in% skills_list]  #filtering for skills in skills_list
-  return(paste(skills, collapse = ", "))  #combine matches into one string
-}
-
-ds_jobs$skills <- sapply(ds_jobs$description, extract_skills, USE.NAMES = FALSE) #apply and create new column 
-
-head(ds_jobs)
-
 ## Analysis: do the most viewed jobs require diff skills? 
 
 #a lot of missing values so this doesnt work
-ds_jobs <- ds_jobs %>%
-  left_join(companies %>% select(company_id, name), by = "company_id")
+#ds_jobs <- ds_jobs %>%
+ # left_join(companies %>% select(company_id, name), by = "company_id")
 
+
+
+
+##new approach 
+
+library(rvest)
+
+html_content <- read_html('https://raw.githubusercontent.com/hbedros/data607_prj3/gss/enhancv_excerpt.html')
+li_items <- html_content %>%
+  html_nodes("li") %>%
+  html_text() %>% 
+  str_squish()  
+
+li_items = tolower(li_items)
+
+
+#Creating a function to extract the skills from description column 
+extract_skills <- function(description) {
+  description <- tolower(description) #to match li_items case 
+  skills <- unlist(strsplit(description, "\\s+"))  #splitting using \\s, turn to vector, and remove duplicates
+  skills <- skills[skills %in% li_items]  #filtering for skills in skills_list
+  return(paste(unique(skills), collapse = ", "))  #combine matches into one string
+}
+
+# apply, create new column.. .
+ds_jobs$skills <- sapply(ds_jobs$description, extract_skills, USE.NAMES = FALSE)
+
+ds_jobs$skills
+
+library(tidytext)
 q75 <- quantile(ds_jobs$views, 0.75, na.rm = TRUE)
 
 many_views <- ds_jobs %>% 
   filter(views >= q75)
-
-library(tidytext)
 
 skills_count <- many_views %>%
   unnest_tokens(word, skills) %>%
   count(word, sort = TRUE)
 
 head(skills_count, 20)
+
+
+
