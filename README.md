@@ -155,15 +155,23 @@ Counted the frequency of each skill and ranked them in descending order.
   6.Created visuals to compare graphs to identified if the distribution of counts for words were uniform ; this would meaning there would  not a differences in one type of skill set versus another type.
   
 ## Conclusion and Next Steps
-- **Summary**: Recap the main findings and their implications.
 
-The most viewed skills for higher end salary data science jobs are soft skills that mostly consist of soft skills such as  understanding, and communication,  then followed by  integrity and evaluation .A few notable skills that are technical like SQL that ranked high. We see in the size differences in the word cloud indicating a difference in importance, and it is validated in the bar graphs and histograms  that the frequency of each word is not uniform. However a a little over 50% of the words had a count less than 20. The graph is not valida for us to perform a Poisson regression test. 
+### Summary
+Recap the main findings and their implications:
 
-- **Recommendations**: 
-A larger sample size that cross analyzes the count of each word with the average salary for all the jobs that contained that skill would be interesting.
-However, a more simpler version would just be getting a bigger sample size and cross-analyzing for low level positions vs high level positions. We could probably run a Chi-Square test and see if there are observed differences for skills needed for low level positions vs more experienced/high level positions.
-In terms of the field of data science, the graphs suggest that there is a desire for growth [within companies] and overall for self improvement. Passing down knowledge in a field that’s very creative would require more than just basic memory skill.Data science is not a one-track field.
-We conclude that training  or classes in social psychology would help current and upcoming scientists  gain and refine skill needed to working environment and collaborative projects
+- The predominant skills for high-salary data science jobs are soft skills, with a focus on understanding, communication, followed by integrity and evaluation.
+- Notable technical skills like SQL also ranked high.
+- Visualizations, such as word clouds, highlighted variances in skill importance.
+- Bar graphs and histograms validated that the frequency of skill mentions is not uniform.
+- Over 50% of the skills were mentioned fewer than 20 times.
+- The current data is not sufficient for a Poisson regression test.
 
-- **Future Work**: 
-As mentioned above, To better identify what skills are needed in Data science jobs and see how they are distributed, we could cross analyze the count[frequency] select skills to see if there is a difference based on positions that require more experience/ at a higher level vs low experience position.
+### Recommendations
+- Analyzing a larger sample size could provide insights into the correlation between skill mentions and average salaries.
+- A simpler approach could involve comparing skill requirements for entry-level vs. senior positions, potentially using a Chi-Square test.
+- The field of data science emphasizes continuous learning and growth.
+- Training or classes in social psychology could benefit data scientists in enhancing their collaborative skills.
+
+### Future Work
+- To better discern the required skills in Data science roles, we suggest cross-analyzing the frequency of select skills. This would help in identifying variations in skill requirements based on job seniority.
+
