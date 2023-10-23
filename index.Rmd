@@ -1,6 +1,6 @@
 ---
-title: "index"
-author: ""
+title: "Project 3 - Analyzing Valued Skills in Data Science: An Examination of LinkedIn Job Postings"
+author: "Noori Selina, Zainab Oketokoun, Gavriel Steinmetz-Silber, Haig Bedros"
 date: "2023-10-10"
 output: html_document
 ---
@@ -46,6 +46,7 @@ dbListTables(con)
 
 
 ```{r}
+suppressWarnings({
 query <- "SELECT * FROM benefits"
 benefits <- dbGetQuery(con, query)
 
@@ -75,6 +76,8 @@ job_skills <- dbGetQuery(con, query)
 
 #closing connection
 dbDisconnect(con)
+
+})
 ```
 
 
@@ -91,64 +94,149 @@ head(ds_jobs)
 
 ### Part 1: A look at Views
 
-Earlier we took a look at all data science-related roles. In this section, we take a slightly differennt approach. After all, we are looking for the most desirable data science skills. Perhaps, then, we can look at the most desirable jobs and see which skills are associated with those jobs. There are different ways to rank the desirability of jobs. We opted to think about views--where presumably a job is more desirable if the posting received more 
+Soon, we will take a look at all data science-related roles. In this section, we take a slightly differennt approach. After all, we are looking for the most desirable data science skills. Perhaps, then, we can look at the most desirable jobs and see which skills are associated with those jobs. There are different ways to rank the desirability of jobs. We opted to think about views--where presumably a job is more desirable if the posting received more views. 
 
+The LinkedIn dataset is sparse; despite the "skills_desc" column, it is not entirely obvious what skills are associated with most jobs. As such, we will work to extract the skills from the postings' descriptions. 
+To accomplish this, we need to match words in the descriptions to words that refer to skills. We took part of an html document from a website that discusses resume skills: https://enhancv.com/resume-skills/
 
-## Analysis: 
-
-#Part 1: 
-#Selina, Zainab, please put your analysis here
-
-
-#Part 2: do the most viewed jobs require diff skills? 
-
-#from ds.only, I'll change later
-#a lot of missing values so this doesnt work
-#ds_jobs <- ds_jobs %>%
- # left_join(companies %>% select(company_id, name), by = "company_id")
-
-
+```{r}
 library(rvest)
 
-html_content <- read_html('https://raw.githubusercontent.com/hbedros/data607_prj3/main/data/enhancv_excerpt.html')
+html_content <- read_html('https://raw.githubusercontent.com/hbedros/data607_prj3/gss/enhancv_excerpt.html')
 li_items <- html_content %>%
   html_nodes("li") %>%
   html_text() %>% 
-  str_squish()  
+  str_squish()   #because there is otherwise \n\n at the end of lines
 
 li_items = tolower(li_items)
 
+sample(li_items, 10)
+```
 
-#Creating a function to extract the skills from description column 
+Now we have this collection of skills. We need a function to extract matches from individual job postings: 
+
+```{r}
 extract_skills <- function(description) {
   description <- tolower(description) #to match li_items case 
-  skills <- unlist(strsplit(description, "\\s+"))  #splitting using \\s, turn to vector, and remove duplicates
+  skills <- unlist(strsplit(description, "\\s+"))  #splitting using \\s, turn to vector
   skills <- skills[skills %in% li_items]  #filtering for skills in skills_list
   return(paste(unique(skills), collapse = ", "))  #combine matches into one string
 }
+```
 
-# apply, create new column.. .
+Now we can apply this function, and create a new column in the dataframe with the extracted skills. While we're at it, we will remove columns from the dataframe that aren't as relevant to our analysis and add the company name for clarity.
+
+```{r}
 ds_jobs$skills <- sapply(ds_jobs$description, extract_skills, USE.NAMES = FALSE)
+ds_jobs_clean <- ds_jobs[c("job_id", "company_id", "title", "views", "skills")] %>%
+  left_join(select(companies, company_id, name), by = "company_id") %>% 
+  relocate(name, .after = 'company_id') %>% 
+  rename(company = name) %>% 
+   select(-company_id)
 
-ds_jobs$skills
+head(ds_jobs_clean, 10)
+```
 
-ds_jobs_clean <- ds_jobs[c("job_id", "company_id", "title", "views", "skills")] 
-  
-  
-library(tidytext)
-q75 <- quantile(ds_jobs_clean$views, 0.75, na.rm = TRUE)
+A peek at the dataframe reveals a wide range of skills. Again, however, we are only interested in the postings that had a lot of views--these reflect the most desirable roles which plausibly might demand the most desirable skills. Let's look at only the top 25% of listings
+
+```{r}
+upper_quart <- quantile(ds_jobs_clean$views, 0.75, na.rm = TRUE)
 
 many_views <- ds_jobs_clean %>% 
-  filter(views >= q75)
+  filter(views >= upper_quart)
 
+many_views
+```
+
+Let's see which skills appear the most using tidytext: 
+
+```{r}
+library(tidytext)
 skills_count <- many_views %>%
   unnest_tokens(word, skills) %>%
   count(word, sort = TRUE)
 
 skills_count
+```
 
+The results are telling. In the most viewed (and therefore, perhaps, desirable) data science-related postings, many of the skills are not technical at all! In fact, of the top 3 skills, 2 are "communication" and "understanding." We can visualize this nicely with a wordcloud as well. 
+
+```{r}
 library(wordcloud)
-wordcloud(words = skills_count$word, freq = skills_count$n, min.freq = 1, scale = c(2, .5))
+wordcloud(words = skills_count$word, freq = skills_count$n, min.freq = 2, scale = c(3, .67))
+```
+In the next section, we'll confirm this is no anomoly; soft skills are extremely desirable for data science-related jobs.
 
 
-### PART 2
+### Part 2: Considering all postings
+
+In this section, we are identifying the most frequently occurring skills across all data science jobs.
+
+```{r}
+# Apply the function to all jobs, creating a new column with the extracted skills
+ds_jobs$skills <- sapply(ds_jobs$description, extract_skills, USE.NAMES = FALSE)
+
+# Create a dataset with skills from all data science jobs
+all_skills <- ds_jobs %>%
+  unnest_tokens(word, skills) %>%
+  count(word, sort = TRUE)
+
+head(all_skills, 20)
+```
+The output reveals the top skills sought after in data science job postings. Across all data sciecne jobs, non-technical skills like 'communication' and 'understanding' are highly emphasized, with 'communication' topping the list, followed by 'understanding'. Once again, we can visualize this with a wordcloud.
+
+```{r}
+library(wordcloud)
+wordcloud(words = skills_count$word, freq = skills_count$n, min.freq = 2, scale = c(3, .67))
+```
+
+
+Grpahs
+
+Add visual
+```{r}
+library(ggplot2)
+ggplot(skills_count, aes(x=word, y = n))+
+  geom_bar(stat = "identity")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+
+  ggtitle("Graph 1:Frequency:Count for each word")
+```
+
+Order factors by order in the data frame
+```{r}
+skills_count$word = factor(skills_count$word,levels = unique(skills_count$word))
+```
+
+Check the dataframe
+
+```{r}
+library(psych)
+head(skills_count)
+tail(skills_count)
+str(skills_count)
+summary(skills_count)
+
+
+library(lattice)
+histogram(~ n | word, data = skills_count, layout= c(1,41))
+```
+
+This is a histogram of the count for each word side-by-side but horitzonal instead of vertical.Visiually we can wee the words that high count vs low and those that have similar count. This is al alternate was for us to visualize the distribution of soft skills mentioned
+```{r}
+library(lattice)
+histogram(~ n | word, data = skills_count, layout= c(1,10))
+```
+
+
+## Conclusion and recommendations
+
+- **Summary**: Recap the main findings and their implications.
+
+The most viewed skills for higher end salary data science jobs are soft skills that mostly consist of soft skills such as  understanding, and communication,  then followed by  integrity and evaluation .A few notable skills that are technical like SQL that ranked high. We see in the size differences in the word cloud indicating a difference in importance, and it is validated in the bar graphs and histograms  that the frequency of each word is not uniform. However a a little over 50% of the words had a count less than 20. The graph is not valida for us to perform a Poisson regression test. 
+
+- **Recommendations**: 
+A larger sample size that cross analyzes the count of each word with the average salary for all the jobs that contained that skill would be interesting.
+However, a more simpler version would just be getting a bigger sample size and cross-analyzing for low level positions vs high level positions. We could probably run a Chi-Square test and see if there are observed differences for skills needed for low level positions vs more experienced/high level positions.
+In terms of the field of data science, the graphs suggest that there is a desire for growth [within companies] and overall for self improvement. Passing down knowledge in a field that’s very creative would require more than just basic memory skill.Data science is not a one-track field.
+We conclude that training  or classes in social psychology would help current and upcoming scientists  gain and refine skill needed to working environment and collaborative projects
+
